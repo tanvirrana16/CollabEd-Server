@@ -280,3 +280,103 @@ app.patch("/updateUserRole", verifyToken, verifyTokenEmail, async (req, res) => 
     res.status(500).send({ error: "Failed to update user role" });
   }
 });
+// update the updateUserRole
+
+// DELETE /deleteUser – admin deletes a user (cannot delete themselves)
+app.delete("/deleteUser", verifyToken, verifyTokenEmail, async (req, res) => {
+  const targetId = req.query.id;
+  try {
+    const target = await userList.findOne({ _id: new ObjectId(targetId) });
+    if (!target) return res.status(404).send({ error: "User not found" });
+    if (target.email === req.user.email)
+      return res.status(403).send({ error: "Cannot delete your own account" });
+    const result = await userList.deleteOne({ _id: new ObjectId(targetId) });
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete user" });
+  }
+});
+// DELETE /deleteUser
+
+// PATCH /updateSession – admin updates session fields (price excluded)
+app.patch("/updateSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const sessionId = req.query.id;
+  const { title, description, tutorName, tutorEmail, registrationStart, registrationEnd, classStart, classEnd, duration } = req.body;
+  try {
+    const updateFields = {};
+    if (title) updateFields.title = title;
+    if (description) updateFields.description = description;
+    if (tutorName) updateFields.tutorName = tutorName;
+    if (tutorEmail) updateFields.tutorEmail = tutorEmail;
+    if (registrationStart) updateFields.registrationStart = registrationStart;
+    if (registrationEnd) updateFields.registrationEnd = registrationEnd;
+    if (classStart) updateFields.classStart = classStart;
+    if (classEnd) updateFields.classEnd = classEnd;
+    if (duration) updateFields.duration = duration;
+    // registrationFee intentionally excluded
+    const result = await sessionList.updateOne(
+      { _id: new ObjectId(sessionId) },
+      { $set: updateFields }
+    );
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to update session" });
+  }
+});
+// PATCH /updateSession
+
+// DELETE /safeDeleteSession – only deletes if no bookings exist for the session
+app.delete("/safeDeleteSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const sessionId = req.query.id;
+  try {
+    const enrollmentCount = await bookingList.countDocuments({ sessionId: sessionId });
+    if (enrollmentCount > 0) {
+      return res.status(409).send({
+        error: "Cannot delete: session has enrolled students",
+        enrollmentCount,
+      });
+    }
+    const result = await sessionList.deleteOne({ _id: new ObjectId(sessionId) });
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete session" });
+  }
+});
+// DELETE /safeDeleteSession
+
+// PATCH /tutorUpdateRejectedSession – tutor edits their own rejected session (price excluded)
+app.patch("/tutorUpdateRejectedSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const sessionId = req.query.id;
+  const tutorEmail = req.user.email; // enforce ownership via JWT, not query param
+  try {
+    const session = await sessionList.findOne({ _id: new ObjectId(sessionId) });
+    if (!session) return res.status(404).send({ error: "Session not found" });
+    if (session.tutorEmail !== tutorEmail)
+      return res.status(403).send({ error: "You can only edit your own sessions" });
+    if (session.status !== "rejected")
+      return res.status(403).send({ error: "You can only edit rejected sessions" });
+
+    const { title, description, registrationStart, registrationEnd, classStart, classEnd, duration } = req.body;
+    const updateFields = {};
+    if (title) updateFields.title = title;
+    if (description) updateFields.description = description;
+    if (registrationStart) updateFields.registrationStart = registrationStart;
+    if (registrationEnd) updateFields.registrationEnd = registrationEnd;
+    if (classStart) updateFields.classStart = classStart;
+    if (classEnd) updateFields.classEnd = classEnd;
+    if (duration) updateFields.duration = duration;
+    // registrationFee and tutorName/tutorEmail intentionally excluded
+
+    const result = await sessionList.updateOne(
+      { _id: new ObjectId(sessionId) },
+      { $set: updateFields }
+    );
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to update session" });
+  }
+});

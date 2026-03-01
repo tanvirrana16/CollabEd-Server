@@ -380,3 +380,74 @@ app.patch("/tutorUpdateRejectedSession", verifyToken, verifyTokenEmail, async (r
     res.status(500).send({ error: "Failed to update session" });
   }
 });
+// PATCH /tutorUpdateRejectedSession
+
+// get the getAllSesssions
+app.get("/getAllSessions", verifyToken, verifyTokenEmail, async (req, res) => {
+  console.log("Fetching all sessions for email: ", req.query.email);
+  try {
+    const result = await sessionList.find().toArray();
+
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch all sessions" });
+  }
+});
+
+// get the getAllSesssions
+
+// delete the deleteSession
+app.delete("/deleteSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const sessionId = req.query.id;
+  console.log("Session ID to delete: ", sessionId);
+
+  try {
+    const result = await sessionList.deleteOne({
+      _id: new ObjectId(sessionId),
+    });
+    console.log("Delete Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete session" });
+  }
+});
+// delete the deleteSession
+
+// patch the approveSession
+app.patch("/approveSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const { id, amount } = req.body;
+
+  try {
+    const result = await sessionList.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: "approved", registrationFee: amount } }
+    );
+    console.log("Approval Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to approve session" });
+  }
+});
+// patch the approveSession
+
+// patch the rejectSession
+app.patch("/rejectSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const id = req.query.id;
+  const { reason, feedback } = req.body;
+
+  const result = await sessionList.updateOne(
+    { _id: new ObjectId(id) },
+    {
+      $set: {
+        status: "rejected",
+        rejectionReason: reason,
+        rejectionFeedback: feedback,
+      },
+    }
+  );
+
+  res.send(result);
+});

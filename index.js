@@ -187,3 +187,38 @@ app.patch("/updateSessionStatus", async (req, res) => {
   console.log("Update Result: ", result);
   res.send(result);
 });
+// patch the updateSessionStatus
+
+// get the approvedSessionsList
+app.get("/approvedSessionsList", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+  console.log("Email from here: ", email);
+
+  try {
+    const result = await sessionList
+      .find({ tutorEmail: email, status: "approved" })
+      .toArray();
+    console.log(result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch approved sessions" });
+  }
+});
+// get the approvedSessionsList
+
+//post the uploadMaterials
+app.post("/uploadMaterials", verifyToken, verifyTokenEmail, async (req, res) => {
+  const data = req.body;
+  console.log("Data: ", data);
+
+  try {
+    const result = await materialList.insertOne(data);
+    console.log("Upload Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to upload materials" });
+  }
+});
+

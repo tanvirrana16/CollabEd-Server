@@ -154,7 +154,7 @@ app.post("/createSession", verifyToken, verifyTokenEmail, async (req, res) => {
 // post the tutorMySessions
 app.get("/tutorMySessions", verifyToken, verifyTokenEmail, async (req, res) => {
   const email = req.query.email;
-  console.log("Email from here: ", email);
+  console.log("Email from here : ", email);
 
   try {
     const result = await sessionList.find({ tutorEmail: email }).toArray();
@@ -207,7 +207,7 @@ app.get("/approvedSessionsList", verifyToken, verifyTokenEmail, async (req, res)
 });
 // get the approvedSessionsList
 
-//post the uploadMaterials
+// post the uploadMaterials
 app.post("/uploadMaterials", verifyToken, verifyTokenEmail, async (req, res) => {
   const data = req.body;
   console.log("Data: ", data);
@@ -218,7 +218,7 @@ app.post("/uploadMaterials", verifyToken, verifyTokenEmail, async (req, res) => 
     res.send(result);
   } catch (err) {
     console.error(err);
-    res.status(500).send({ error: "Failed to upload materials" });
+    res.status(500).send({ error: "Failed  to upload materials" });
   }
 });
 

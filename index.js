@@ -186,3 +186,97 @@ app.patch("/updateSessionStatus", async (req, res) => {
   console.log("Update Result: ", result);
   res.send(result);
 });
+// patch the updateSessionStatus
+
+// get the approvedSessionsList
+app.get("/approvedSessionsList", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+  console.log("Email from here: ", email);
+
+  try {
+    const result = await sessionList
+      .find({ tutorEmail: email, status: "approved" })
+      .toArray();
+    console.log(result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch approved sessions" });
+  }
+});
+// get the approvedSessionsList
+
+//post the uploadMaterials
+app.post("/uploadMaterials", verifyToken, verifyTokenEmail, async (req, res) => {
+  const data = req.body;
+  console.log("Data: ", data);
+
+  try {
+    const result = await materialList.insertOne(data);
+    console.log("Upload Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to upload materials" });
+  }
+});
+//post the uploadMaterials
+
+// get the getAllMaterials
+app.get("/getAllMaterials", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+
+  try {
+    const result = await materialList.find({ tutorEmail: email }).toArray();
+    console.log(result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch materials" });
+  }
+});
+// get the getAllMaterials
+
+// get the allUsers
+app.get("/getAllUsers", verifyToken, verifyTokenEmail, async (req, res) => {
+  const search = req.query.search || "";
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const query = search
+    ? {
+      $or: [
+        { userName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ],
+    }
+    : {};
+
+  const users = await userList.find(query).skip(skip).limit(limit).toArray();
+  const total = await userList.countDocuments(query);
+
+  res.send({ users, total });
+});
+
+// get the allUsers
+
+// update the updateUserRole
+app.patch("/updateUserRole", verifyToken, verifyTokenEmail, async (req, res) => {
+  // const email = req.query.email;
+  const role = req.query.role;
+  const id = req.query.id;
+  console.log("Role from here: ", role);
+  console.log("ID from here: ", id);
+  try {
+    const result = await userList.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { userRole: role } }
+    );
+    console.log("Update Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to update user role" });
+  }
+});

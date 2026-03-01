@@ -127,3 +127,62 @@ app.get("/searchTheUser", async (req, res) => {
 
   res.send(result);
 });
+
+// post the user into the userList
+
+app.post("/postTheUser", async (req, res) => {
+  const data = req.body;
+  console.log("data : ", data);
+
+  const result = await userList.insertOne(data);
+  console.log(result, "hit from here post");
+
+  res.send(result);
+});
+// post the user into the userList
+
+// post the createSession
+app.post("/createSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const data = req.body;
+  console.log("data : ", data);
+  const result = await sessionList.insertOne(data);
+  res.send(result);
+});
+// post the createSession
+
+// post the tutorMySessions
+app.get("/tutorMySessions", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+  console.log("Email from here: ", email);
+
+  try {
+    const result = await sessionList.find({ tutorEmail: email }).toArray();
+    console.log(result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch tutor sessions" });
+  }
+});
+// post the tutorMySessions
+
+// patch the updateSessionStatus
+app.patch("/updateSessionStatus", async (req, res) => {
+  // const status = req.body;
+  const sessionId = req.query.id;
+  // console.log("Session ID: ", sessionId, "Status: ", status);
+
+  const result = await sessionList.updateOne(
+    { _id: new ObjectId(sessionId) },
+    {
+      $set: {
+        status: "pending",
+        rejectionReason: null,
+        rejectionFeedback: null,
+      },
+    }
+  );
+
+  console.log("Update Result: ", result);
+  res.send(result);
+});

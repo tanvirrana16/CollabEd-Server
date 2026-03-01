@@ -94,3 +94,36 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
+//------------------------- Making API from here -------------------------------------------//
+
+// create database and table
+const CollabEdDB = client.db("collabdata");
+const userList = CollabEdDB.collection("userList");
+const sessionList = CollabEdDB.collection("sessionList");
+const materialList = CollabEdDB.collection("materialList");
+const notesCollection = CollabEdDB.collection("notesCollection");
+const bookingList = CollabEdDB.collection("bookingList");
+const paymentList = CollabEdDB.collection("paymentList");
+
+//  find the user in the userlist
+
+app.get("/findTheUser", async (req, res) => {
+  const email = req.query.email;
+  console.log("Email form here: ", email);
+
+  const result = await userList.findOne({ email: email });
+  console.log(result, "hit from here");
+
+  res.send(result ? true : false);
+});
+//  find the user in the userlist
+
+app.get("/searchTheUser", async (req, res) => {
+  const email = req.query.email;
+  console.log("Email form here: ", email);
+
+  const result = await userList.findOne({ email: email });
+  console.log("axios hit", result);
+
+  res.send(result);
+});

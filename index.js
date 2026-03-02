@@ -451,3 +451,49 @@ app.patch("/rejectSession", verifyToken, verifyTokenEmail, async (req, res) => {
 
   res.send(result);
 });
+
+
+// patch the rejectSession
+
+// get the getAllMaterialsAdmin
+app.get("/getAllMaterialsAdmin", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    const result = await materialList.find().toArray();
+    console.log(result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch all materials" });
+  }
+});
+// get the getAllMaterialsAdmin
+
+// delete the deleteMaterial
+app.delete("/deleteMaterial", verifyToken, verifyTokenEmail, async (req, res) => {
+  const materialId = req.query.id;
+  console.log("Material ID to delete: ", materialId);
+
+  try {
+    const result = await materialList.deleteOne({
+      _id: new ObjectId(materialId),
+    });
+    console.log("Delete Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete material" });
+  }
+});
+// delete the deleteMaterial
+
+// post the createNote
+app.post("/createNote", async (req, res) => {
+  try {
+    const note = req.body;
+    const result = await notesCollection.insertOne(note);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to create note" });
+  }
+});

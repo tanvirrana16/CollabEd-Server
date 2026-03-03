@@ -715,3 +715,41 @@ app.post("/create-payment-intent", async (req, res) => {
 });
 
 // create payment intent
+
+
+// get the study materials
+app.get("/studentMaterials", verifyToken, verifyTokenEmail, async (req, res) => {
+  const studentEmail = req.query.email;
+  console.log("Student Email: ", studentEmail);
+  if (!studentEmail) {
+    return res.status(400).send({ error: "Email is required" });
+  }
+
+  try {
+    // Step 1: Find all booked sessions by the student
+    const bookings = await bookingList
+      .find({ studentEmail })
+      .project({ sessionId: 1 })
+      .toArray();
+
+    console.log("Bookings for student:", bookings);
+
+    // const sessionIds = bookings.map((b) => new ObjectId(b.sessionId));
+    const sessionIds = bookings.map((b) => b.sessionId);
+
+    console.log("Session IDs for student:", sessionIds);
+    // Step 2: Find all materials that match those session IDs
+    const materials = await materialList
+      .find({ sessionId: { $in: sessionIds } })
+      .toArray();
+
+    console.log("Materials for student:", materials);
+
+    res.send(materials);
+  } catch (error) {
+    console.error("Error fetching materials:", error);
+    res.status(500).send({ error: "Failed to fetch materials" });
+  }
+});
+
+// get the study materials

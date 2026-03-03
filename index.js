@@ -852,3 +852,41 @@ app.get("/adminStats", verifyToken, verifyTokenEmail, async (req, res) => {
       totalAdminEarnings: 0,
       totalTutorPayouts: 0,
     };
+
+
+    // Monthly revenue breakdown
+    const monthlyAgg = await paymentList
+      .aggregate([
+        {
+          $group: {
+            _id: {
+              year: { $year: "$paidAt" },
+              month: { $month: "$paidAt" },
+            },
+            revenue: { $sum: "$totalAmount" },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+      ])
+      .toArray();
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyRevenue = monthlyAgg.map((m) => ({
+      month: `${monthNames[m._id.month - 1]} ${m._id.year}`,
+      revenue: m.revenue,
+      enrollments: m.count,
+    }));
+
+    res.send({
+      totalEnrollments,
+      totalRevenue: parseFloat(totals.totalRevenue.toFixed(2)),
+      totalAdminEarnings: parseFloat(totals.totalAdminEarnings.toFixed(2)),
+      totalTutorPayouts: parseFloat(totals.totalTutorPayouts.toFixed(2)),
+      monthlyRevenue,
+    });
+  } catch (err) {
+    console.error("Error fetching admin stats:", err);
+    res.status(500).send({ error: "Failed to fetch admin stats" });
+  }
+});

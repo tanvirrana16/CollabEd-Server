@@ -1000,3 +1000,29 @@ app.get("/tutorStats", verifyToken, verifyTokenEmail, async (req, res) => {
     res.status(500).send({ error: "Failed to fetch tutor stats" });
   }
 });
+// GET /tutorStats
+
+
+// GET /tutorPayments  – paginated payment list for the requesting tutor only
+app.get("/tutorPayments", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    // Security: use email from the verified JWT, not a query param the user controls
+    const tutorEmail = req.user.email;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const total = await paymentList.countDocuments({ tutorEmail });
+    const payments = await paymentList
+      .find({ tutorEmail })
+      .sort({ paidAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    res.send({ payments, total });
+  } catch (err) {
+    console.error("Error fetching tutor payments:", err);
+    res.status(500).send({ error: "Failed to fetch tutor payments" });
+  }
+});

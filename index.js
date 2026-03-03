@@ -662,3 +662,56 @@ app.patch("/postReview", async (req, res) => {
   }
 });
 // patch the postReview
+
+
+// get the getSessionReviews
+app.get("/getSessionReviews", async (req, res) => {
+  const sessionId = req.query.id;
+  try {
+    const reviews = await bookingList
+      .find(
+        { sessionId: sessionId },
+        { projection: { review: 1, rating: 1, studentEmail: 1 } }
+      )
+      .toArray();
+    console.log("Reviews: ", reviews);
+    res.send(reviews);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: "Failed to fetch reviews" });
+  }
+});
+// get the getSessionReviews
+
+// get the allTutors
+app.get("/allTutors", async (req, res) => {
+  try {
+    const tutors = await userList.find({ userRole: "Tutor" }).toArray();
+    console.log("Tutors: ", tutors);
+    res.send(tutors);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch tutors" });
+  }
+});
+// get the allTutors
+
+// create payment intent
+app.post("/create-payment-intent", async (req, res) => {
+  const { amount } = req.body;
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount * 100, // Convert to cents
+      currency: "usd",
+      payment_method_types: ["card"],
+    });
+
+    res.send({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    console.error("Error creating payment intent:", err);
+    res.status(500).send({ error: err.message });
+  }
+});
+
+// create payment intent

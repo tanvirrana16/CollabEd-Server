@@ -753,3 +753,26 @@ app.get("/studentMaterials", verifyToken, verifyTokenEmail, async (req, res) => 
 });
 
 // get the study materials
+
+
+// get the checkedBooked
+app.get("/checkedBooked", async (req, res) => {
+  const { sessionId, email } = req.query;
+  console.log("Session ID: ", sessionId, "Student Email: ", email);
+
+  try {
+    const booking = await bookingList.findOne({
+      sessionId: sessionId,
+      studentEmail: email,
+    });
+
+    console.log("Booking found: ", booking);
+    res.send(!!booking); // Return true if booking exists, false otherwise
+  } catch (error) {
+    console.error("Error checking booking:", error);
+    res.status(500).send({ error: "Failed to check booking" });
+  }
+});
+// get the checkedBooked
+
+// 

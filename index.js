@@ -774,7 +774,7 @@ app.get("/checkedBooked", async (req, res) => {
   }
 });
 // get the checkedBooked
-/ PAYMENT ROUTES
+// PAYMENT ROUTES
 // ─────────────────────────────────────────────────────────────────────────────
 
 // POST /savePayment  – store a completed payment record with 80/20 revenue split
@@ -1026,3 +1026,4 @@ app.get("/tutorPayments", verifyToken, verifyTokenEmail, async (req, res) => {
     res.status(500).send({ error: "Failed to fetch tutor payments" });
   }
 });
+

@@ -774,5 +774,28 @@ app.get("/checkedBooked", async (req, res) => {
   }
 });
 // get the checkedBooked
+/ PAYMENT ROUTES
+// ─────────────────────────────────────────────────────────────────────────────
 
-// 
+// POST /savePayment  – store a completed payment record with 80/20 revenue split
+app.post("/savePayment", async (req, res) => {
+  try {
+    const {
+      studentName,
+      studentEmail,
+      tutorName,
+      tutorEmail,
+      sessionId,
+      sessionTitle,
+      totalAmount,
+      transactionId,
+      paymentMethod,
+      paymentStatus,
+    } = req.body;
+
+    // Prevent duplicate payment records for the same transaction
+    const existing = await paymentList.findOne({ transactionId });
+    if (existing) {
+      return res.status(409).send({ error: "Payment already recorded" });
+    }
+

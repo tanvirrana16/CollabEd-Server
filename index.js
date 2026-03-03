@@ -610,3 +610,55 @@ app.get("/getSessionById/:id", async (req, res) => {
     res.status(500).send({ error: "Failed to fetch session" });
   }
 });
+
+// get the getSessionById
+
+// post the bookSession
+app.post("/bookSession", async (req, res) => {
+  try {
+    const bookingData = req.body;
+    console.log("Booking Data: ", bookingData);
+
+    // Insert the booking data into the sessionList
+    const result = await bookingList.insertOne(bookingData);
+    console.log("Booking Result: ", result);
+
+    res.send(result);
+  } catch (err) {
+    console.error("Error booking session:", err);
+    res.status(500).send({ error: "Failed to book session" });
+  }
+});
+// post the bookSession
+
+// get the getMyBookedSessions
+app.get("/getMyBookedSessions", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+  try {
+    const result = await bookingList.find({ studentEmail: email }).toArray();
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch booked sessions" });
+  }
+});
+// get the getMyBookedSessions
+
+// patch the postReview
+app.patch("/postReview", async (req, res) => {
+  const { reviewerEmail, comment, rating, sessionId } = req.body;
+  if (!reviewerEmail || !comment || !rating || !sessionId) {
+    return res.status(400).send({ error: "All fields required" });
+  }
+  try {
+    const result = await bookingList.updateOne(
+      { studentEmail: reviewerEmail, sessionId: sessionId },
+      { $set: { review: comment, rating: rating } }
+    );
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: "Failed to post review" });
+  }
+});
+// patch the postReview

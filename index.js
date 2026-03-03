@@ -568,3 +568,45 @@ app.get("/getSixSessions", async (req, res) => {
   }
 });
 // get the  getSixSessions
+
+// get the getAllSessionsGeneral
+app.get("/getAllSessionsGeneral", async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
+    const skip = (page - 1) * limit;
+
+    const sortBy = req.query.sortBy || "registrationStart"; // default sorting field
+    const order = req.query.order === "desc" ? -1 : 1; // default ascending
+
+    // Total approved sessions
+    const total = await sessionList.countDocuments({ status: "approved" });
+
+    // Paginated + Sorted
+    const sessions = await sessionList
+      .find({ status: "approved" })
+      .sort({ [sortBy]: order })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    res.send({ sessions, total });
+  } catch (err) {
+    console.error("Error fetching approved sessions:", err);
+    res.status(500).send({ error: "Failed to fetch approved sessions" });
+  }
+});
+
+// get the getAllSessionsGeneral
+
+// get the getSessionById
+app.get("/getSessionById/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const session = await sessionList.findOne({ _id: new ObjectId(id) });
+    res.send(session);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch session" });
+  }
+});

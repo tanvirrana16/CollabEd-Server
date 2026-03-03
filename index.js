@@ -497,3 +497,74 @@ app.post("/createNote", async (req, res) => {
     res.status(500).send({ error: "Failed to create note" });
   }
 });
+
+
+// post the createNote
+
+// get the getMyNotes
+app.get("/getMyNotes", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+
+  try {
+    const notes = await notesCollection.find({ email: email }).toArray();
+    res.send(notes);
+  } catch (err) {
+    console.error("Failed to fetch notes:", err);
+    res.status(500).send({ error: "Failed to fetch notes" });
+  }
+});
+// get the getMyNotes
+
+// delete the deleteNote
+app.delete("/deleteNote", verifyToken, verifyTokenEmail, async (req, res) => {
+  const noteId = req.query.id;
+  console.log("Note ID to delete: ", noteId);
+
+  try {
+    const result = await notesCollection.deleteOne({
+      _id: new ObjectId(noteId),
+    });
+    console.log("Delete Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete note" });
+  }
+});
+// delete the deleteNote
+
+// get the  getNoteById
+app.get("/getNoteById/:id", verifyToken, verifyTokenEmail, async (req, res) => {
+  const { id } = req.params;
+  const result = await notesCollection.findOne({ _id: new ObjectId(id) });
+  res.send(result);
+});
+// get the  getNoteById
+
+// patch the updateNote
+app.patch("/updateNote/:id", verifyToken, verifyTokenEmail, async (req, res) => {
+  const { id } = req.params;
+  const { title, description } = req.body;
+  const result = await notesCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { title, description } }
+  );
+  res.send(result);
+});
+// patch the updateNote
+
+// get the  getSixSessions
+app.get("/getSixSessions", async (req, res) => {
+  try {
+    const sessions = await sessionList
+      .find({ status: "approved" }) // Only approved sessions
+      .sort({ registrationStart: -1 }) // Optional: newest first
+      .toArray();
+
+    res.send(sessions);
+  } catch (error) {
+    console.error("Failed to fetch sessions:", error);
+    res.status(500).send({ error: "Failed to fetch sessions" });
+  }
+});
+// get the  getSixSessions

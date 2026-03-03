@@ -928,3 +928,75 @@ app.get("/adminPayments", verifyToken, verifyTokenEmail, async (req, res) => {
     res.status(500).send({ error: "Failed to fetch admin payments" });
   }
 });
+
+
+// GET /adminPayments
+
+// GET /tutorStats  – earnings summary for the requesting tutor
+app.get("/tutorStats", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    // Use the verified JWT email for security
+    const tutorEmail = req.user.email;
+
+    // Total individual payment records (= total enrollments by this tutor's sessions)
+    const totalEnrollments = await paymentList.countDocuments({ tutorEmail });
+
+    // Distinct unique students who enrolled
+    const distinctStudents = await paymentList.distinct("studentEmail", { tutorEmail });
+    const totalStudents = distinctStudents.length;
+
+    // Distinct sessions sold (unique sessionId values)
+    const sessionIds = await paymentList.distinct("sessionId", { tutorEmail });
+    const totalSessions = sessionIds.length;
+
+    // Financial aggregation
+    const earningsAgg = await paymentList
+      .aggregate([
+        { $match: { tutorEmail } },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$totalAmount" },
+            totalEarnings: { $sum: "$tutorShare" },
+          },
+        },
+      ])
+      .toArray();
+
+    const earnings = earningsAgg[0] || { totalRevenue: 0, totalEarnings: 0 };
+
+    // Monthly earnings breakdown
+    const monthlyAgg = await paymentList
+      .aggregate([
+        { $match: { tutorEmail } },
+        {
+          $group: {
+            _id: { year: { $year: "$paidAt" }, month: { $month: "$paidAt" } },
+            earnings: { $sum: "$tutorShare" },
+            enrollments: { $sum: 1 },
+          },
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+      ])
+      .toArray();
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyEarnings = monthlyAgg.map((m) => ({
+      month: `${monthNames[m._id.month - 1]} ${m._id.year}`,
+      earnings: parseFloat(m.earnings.toFixed(2)),
+      enrollments: m.enrollments,
+    }));
+
+    res.send({
+      totalStudents,       // unique students
+      totalEnrollments,    // total payment count
+      totalSessions,       // distinct sessions sold
+      totalRevenue: parseFloat(earnings.totalRevenue.toFixed(2)),
+      totalEarnings: parseFloat(earnings.totalEarnings.toFixed(2)),
+      monthlyEarnings,
+    });
+  } catch (err) {
+    console.error("Error fetching tutor stats:", err);
+    res.status(500).send({ error: "Failed to fetch tutor stats" });
+  }
+});

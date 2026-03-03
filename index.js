@@ -799,3 +799,56 @@ app.post("/savePayment", async (req, res) => {
       return res.status(409).send({ error: "Payment already recorded" });
     }
 
+ const amount = parseFloat(totalAmount) || 0;
+    // Revenue split – calculated strictly on the backend
+    const adminShare = parseFloat((amount * 0.20).toFixed(2));
+    const tutorShare = parseFloat((amount * 0.80).toFixed(2));
+
+    const paymentRecord = {
+      studentName,
+      studentEmail,
+      tutorName,
+      tutorEmail,
+      sessionId,
+      sessionTitle,
+      totalAmount: amount,
+      adminShare,
+      tutorShare,
+      transactionId,
+      paymentMethod: paymentMethod || "card",
+      paymentStatus: paymentStatus || "succeeded",
+      paidAt: new Date(),
+    };
+
+    const result = await paymentList.insertOne(paymentRecord);
+    res.send(result);
+  } catch (err) {
+    console.error("Error saving payment:", err);
+    res.status(500).send({ error: "Failed to save payment" });
+  }
+});
+// POST /savePayment
+
+// GET /adminStats  – aggregated financial overview for admin
+app.get("/adminStats", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    const totalEnrollments = await paymentList.countDocuments({});
+
+    const totalsAgg = await paymentList
+      .aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$totalAmount" },
+            totalAdminEarnings: { $sum: "$adminShare" },
+            totalTutorPayouts: { $sum: "$tutorShare" },
+          },
+        },
+      ])
+      .toArray();
+
+    const totals = totalsAgg[0] || {
+      totalRevenue: 0,
+      totalAdminEarnings: 0,
+      totalTutorPayouts: 0,
+    };

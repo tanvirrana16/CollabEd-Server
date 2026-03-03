@@ -127,3 +127,921 @@ app.get("/searchTheUser", async (req, res) => {
 
   res.send(result);
 });
+
+// post the user into the userList
+
+app.post("/postTheUser", async (req, res) => {
+  const data = req.body;
+  console.log("data : ", data);
+
+  const result = await userList.insertOne(data);
+  console.log(result, "hit from here post");
+
+  res.send(result);
+});
+// post the user into the userList
+
+// post the createSession
+app.post("/createSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const data = req.body;
+  console.log("data : ", data);
+  const result = await sessionList.insertOne(data);
+  res.send(result);
+});
+// post the createSession
+
+// post the tutorMySessions
+app.get("/tutorMySessions", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+  console.log("Email from here: ", email);
+
+  try {
+    const result = await sessionList.find({ tutorEmail: email }).toArray();
+    console.log(result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch tutor sessions" });
+  }
+});
+// post the tutorMySessions
+
+// patch the updateSessionStatus
+app.patch("/updateSessionStatus", async (req, res) => {
+  // const status = req.body;
+  const sessionId = req.query.id;
+  // console.log("Session ID: ", sessionId, "Status: ", status);
+
+  const result = await sessionList.updateOne(
+    { _id: new ObjectId(sessionId) },
+    {
+      $set: {
+        status: "pending",
+        rejectionReason: null,
+        rejectionFeedback: null,
+      },
+    }
+  );
+
+  console.log("Update Result: ", result);
+  res.send(result);
+});
+// patch the updateSessionStatus
+
+// get the approvedSessionsList
+app.get("/approvedSessionsList", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+  console.log("Email from here: ", email);
+
+  try {
+    const result = await sessionList
+      .find({ tutorEmail: email, status: "approved" })
+      .toArray();
+    console.log(result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch approved sessions" });
+  }
+});
+// get the approvedSessionsList
+
+//post the uploadMaterials
+app.post("/uploadMaterials", verifyToken, verifyTokenEmail, async (req, res) => {
+  const data = req.body;
+  console.log("Data: ", data);
+
+  try {
+    const result = await materialList.insertOne(data);
+    console.log("Upload Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to upload materials" });
+  }
+});
+//post the uploadMaterials
+
+// get the getAllMaterials
+app.get("/getAllMaterials", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+
+  try {
+    const result = await materialList.find({ tutorEmail: email }).toArray();
+    console.log(result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch materials" });
+  }
+});
+// get the getAllMaterials
+
+// get the allUsers
+app.get("/getAllUsers", verifyToken, verifyTokenEmail, async (req, res) => {
+  const search = req.query.search || "";
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const query = search
+    ? {
+      $or: [
+        { userName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ],
+    }
+    : {};
+
+  const users = await userList.find(query).skip(skip).limit(limit).toArray();
+  const total = await userList.countDocuments(query);
+
+  res.send({ users, total });
+});
+
+// get the allUsers
+
+// update the updateUserRole
+app.patch("/updateUserRole", verifyToken, verifyTokenEmail, async (req, res) => {
+  // const email = req.query.email;
+  const role = req.query.role;
+  const id = req.query.id;
+  console.log("Role from here: ", role);
+  console.log("ID from here: ", id);
+  try {
+    const result = await userList.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { userRole: role } }
+    );
+    console.log("Update Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to update user role" });
+  }
+});
+// update the updateUserRole
+
+// DELETE /deleteUser – admin deletes a user (cannot delete themselves)
+app.delete("/deleteUser", verifyToken, verifyTokenEmail, async (req, res) => {
+  const targetId = req.query.id;
+  try {
+    const target = await userList.findOne({ _id: new ObjectId(targetId) });
+    if (!target) return res.status(404).send({ error: "User not found" });
+    if (target.email === req.user.email)
+      return res.status(403).send({ error: "Cannot delete your own account" });
+    const result = await userList.deleteOne({ _id: new ObjectId(targetId) });
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete user" });
+  }
+});
+// DELETE /deleteUser
+
+// PATCH /updateSession – admin updates session fields (price excluded)
+app.patch("/updateSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const sessionId = req.query.id;
+  const { title, description, tutorName, tutorEmail, registrationStart, registrationEnd, classStart, classEnd, duration } = req.body;
+  try {
+    const updateFields = {};
+    if (title) updateFields.title = title;
+    if (description) updateFields.description = description;
+    if (tutorName) updateFields.tutorName = tutorName;
+    if (tutorEmail) updateFields.tutorEmail = tutorEmail;
+    if (registrationStart) updateFields.registrationStart = registrationStart;
+    if (registrationEnd) updateFields.registrationEnd = registrationEnd;
+    if (classStart) updateFields.classStart = classStart;
+    if (classEnd) updateFields.classEnd = classEnd;
+    if (duration) updateFields.duration = duration;
+    // registrationFee intentionally excluded
+    const result = await sessionList.updateOne(
+      { _id: new ObjectId(sessionId) },
+      { $set: updateFields }
+    );
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to update session" });
+  }
+});
+// PATCH /updateSession
+
+// DELETE /safeDeleteSession – only deletes if no bookings exist for the session
+app.delete("/safeDeleteSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const sessionId = req.query.id;
+  try {
+    const enrollmentCount = await bookingList.countDocuments({ sessionId: sessionId });
+    if (enrollmentCount > 0) {
+      return res.status(409).send({
+        error: "Cannot delete: session has enrolled students",
+        enrollmentCount,
+      });
+    }
+    const result = await sessionList.deleteOne({ _id: new ObjectId(sessionId) });
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete session" });
+  }
+});
+// DELETE /safeDeleteSession
+
+// PATCH /tutorUpdateRejectedSession – tutor edits their own rejected session (price excluded)
+app.patch("/tutorUpdateRejectedSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const sessionId = req.query.id;
+  const tutorEmail = req.user.email; // enforce ownership via JWT, not query param
+  try {
+    const session = await sessionList.findOne({ _id: new ObjectId(sessionId) });
+    if (!session) return res.status(404).send({ error: "Session not found" });
+    if (session.tutorEmail !== tutorEmail)
+      return res.status(403).send({ error: "You can only edit your own sessions" });
+    if (session.status !== "rejected")
+      return res.status(403).send({ error: "You can only edit rejected sessions" });
+
+    const { title, description, registrationStart, registrationEnd, classStart, classEnd, duration } = req.body;
+    const updateFields = {};
+    if (title) updateFields.title = title;
+    if (description) updateFields.description = description;
+    if (registrationStart) updateFields.registrationStart = registrationStart;
+    if (registrationEnd) updateFields.registrationEnd = registrationEnd;
+    if (classStart) updateFields.classStart = classStart;
+    if (classEnd) updateFields.classEnd = classEnd;
+    if (duration) updateFields.duration = duration;
+    // registrationFee and tutorName/tutorEmail intentionally excluded
+
+    const result = await sessionList.updateOne(
+      { _id: new ObjectId(sessionId) },
+      { $set: updateFields }
+    );
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to update session" });
+  }
+});
+// PATCH /tutorUpdateRejectedSession
+
+// get the getAllSesssions
+app.get("/getAllSessions", verifyToken, verifyTokenEmail, async (req, res) => {
+  console.log("Fetching all sessions for email: ", req.query.email);
+  try {
+    const result = await sessionList.find().toArray();
+
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch all sessions" });
+  }
+});
+
+// get the getAllSesssions
+
+// delete the deleteSession
+app.delete("/deleteSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const sessionId = req.query.id;
+  console.log("Session ID to delete: ", sessionId);
+
+  try {
+    const result = await sessionList.deleteOne({
+      _id: new ObjectId(sessionId),
+    });
+    console.log("Delete Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete session" });
+  }
+});
+// delete the deleteSession
+
+// patch the approveSession
+app.patch("/approveSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const { id, amount } = req.body;
+
+  try {
+    const result = await sessionList.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: "approved", registrationFee: amount } }
+    );
+    console.log("Approval Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to approve session" });
+  }
+});
+// patch the approveSession
+
+// patch the rejectSession
+app.patch("/rejectSession", verifyToken, verifyTokenEmail, async (req, res) => {
+  const id = req.query.id;
+  const { reason, feedback } = req.body;
+
+  const result = await sessionList.updateOne(
+    { _id: new ObjectId(id) },
+    {
+      $set: {
+        status: "rejected",
+        rejectionReason: reason,
+        rejectionFeedback: feedback,
+      },
+    }
+  );
+
+  res.send(result);
+});
+
+
+// patch the rejectSession
+
+// get the getAllMaterialsAdmin
+app.get("/getAllMaterialsAdmin", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    const result = await materialList.find().toArray();
+    console.log(result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch all materials" });
+  }
+});
+// get the getAllMaterialsAdmin
+
+// delete the deleteMaterial
+app.delete("/deleteMaterial", verifyToken, verifyTokenEmail, async (req, res) => {
+  const materialId = req.query.id;
+  console.log("Material ID to delete: ", materialId);
+
+  try {
+    const result = await materialList.deleteOne({
+      _id: new ObjectId(materialId),
+    });
+    console.log("Delete Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete material" });
+  }
+});
+// delete the deleteMaterial
+
+// post the createNote
+app.post("/createNote", async (req, res) => {
+  try {
+    const note = req.body;
+    const result = await notesCollection.insertOne(note);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to create note" });
+  }
+});
+
+
+// post the createNote
+
+// get the getMyNotes
+app.get("/getMyNotes", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+
+  try {
+    const notes = await notesCollection.find({ email: email }).toArray();
+    res.send(notes);
+  } catch (err) {
+    console.error("Failed to fetch notes:", err);
+    res.status(500).send({ error: "Failed to fetch notes" });
+  }
+});
+// get the getMyNotes
+
+// delete the deleteNote
+app.delete("/deleteNote", verifyToken, verifyTokenEmail, async (req, res) => {
+  const noteId = req.query.id;
+  console.log("Note ID to delete: ", noteId);
+
+  try {
+    const result = await notesCollection.deleteOne({
+      _id: new ObjectId(noteId),
+    });
+    console.log("Delete Result: ", result);
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to delete note" });
+  }
+});
+// delete the deleteNote
+
+// get the  getNoteById
+app.get("/getNoteById/:id", verifyToken, verifyTokenEmail, async (req, res) => {
+  const { id } = req.params;
+  const result = await notesCollection.findOne({ _id: new ObjectId(id) });
+  res.send(result);
+});
+// get the  getNoteById
+
+// patch the updateNote
+app.patch("/updateNote/:id", verifyToken, verifyTokenEmail, async (req, res) => {
+  const { id } = req.params;
+  const { title, description } = req.body;
+  const result = await notesCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { title, description } }
+  );
+  res.send(result);
+});
+// patch the updateNote
+
+// get the  getSixSessions
+app.get("/getSixSessions", async (req, res) => {
+  try {
+    const sessions = await sessionList
+      .find({ status: "approved" }) // Only approved sessions
+      .sort({ registrationStart: -1 }) // Optional: newest first
+      .toArray();
+
+    res.send(sessions);
+  } catch (error) {
+    console.error("Failed to fetch sessions:", error);
+    res.status(500).send({ error: "Failed to fetch sessions" });
+  }
+});
+// get the  getSixSessions
+
+// get the getAllSessionsGeneral
+app.get("/getAllSessionsGeneral", async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
+    const skip = (page - 1) * limit;
+
+    const sortBy = req.query.sortBy || "registrationStart"; // default sorting field
+    const order = req.query.order === "desc" ? -1 : 1; // default ascending
+
+    // Total approved sessions
+    const total = await sessionList.countDocuments({ status: "approved" });
+
+    // Paginated + Sorted
+    const sessions = await sessionList
+      .find({ status: "approved" })
+      .sort({ [sortBy]: order })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    res.send({ sessions, total });
+  } catch (err) {
+    console.error("Error fetching approved sessions:", err);
+    res.status(500).send({ error: "Failed to fetch approved sessions" });
+  }
+});
+
+// get the getAllSessionsGeneral
+
+// get the getSessionById
+app.get("/getSessionById/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const session = await sessionList.findOne({ _id: new ObjectId(id) });
+    res.send(session);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch session" });
+  }
+});
+
+// get the getSessionById
+
+// post the bookSession
+app.post("/bookSession", async (req, res) => {
+  try {
+    const bookingData = req.body;
+    console.log("Booking Data: ", bookingData);
+
+    // Insert the booking data into the sessionList
+    const result = await bookingList.insertOne(bookingData);
+    console.log("Booking Result: ", result);
+
+    res.send(result);
+  } catch (err) {
+    console.error("Error booking session:", err);
+    res.status(500).send({ error: "Failed to book session" });
+  }
+});
+// post the bookSession
+
+// get the getMyBookedSessions
+app.get("/getMyBookedSessions", verifyToken, verifyTokenEmail, async (req, res) => {
+  const email = req.query.email;
+  try {
+    const result = await bookingList.find({ studentEmail: email }).toArray();
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch booked sessions" });
+  }
+});
+// get the getMyBookedSessions
+
+// patch the postReview
+app.patch("/postReview", async (req, res) => {
+  const { reviewerEmail, comment, rating, sessionId } = req.body;
+  if (!reviewerEmail || !comment || !rating || !sessionId) {
+    return res.status(400).send({ error: "All fields required" });
+  }
+  try {
+    const result = await bookingList.updateOne(
+      { studentEmail: reviewerEmail, sessionId: sessionId },
+      { $set: { review: comment, rating: rating } }
+    );
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: "Failed to post review" });
+  }
+});
+// patch the postReview
+
+
+// get the getSessionReviews
+app.get("/getSessionReviews", async (req, res) => {
+  const sessionId = req.query.id;
+  try {
+    const reviews = await bookingList
+      .find(
+        { sessionId: sessionId },
+        { projection: { review: 1, rating: 1, studentEmail: 1 } }
+      )
+      .toArray();
+    console.log("Reviews: ", reviews);
+    res.send(reviews);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: "Failed to fetch reviews" });
+  }
+});
+// get the getSessionReviews
+
+// get the allTutors
+app.get("/allTutors", async (req, res) => {
+  try {
+    const tutors = await userList.find({ userRole: "Tutor" }).toArray();
+    console.log("Tutors: ", tutors);
+    res.send(tutors);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to fetch tutors" });
+  }
+});
+// get the allTutors
+
+// create payment intent
+app.post("/create-payment-intent", async (req, res) => {
+  const { amount } = req.body;
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount * 100, // Convert to cents
+      currency: "usd",
+      payment_method_types: ["card"],
+    });
+
+    res.send({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    console.error("Error creating payment intent:", err);
+    res.status(500).send({ error: err.message });
+  }
+});
+
+// create payment intent
+
+
+// get the study materials
+app.get("/studentMaterials", verifyToken, verifyTokenEmail, async (req, res) => {
+  const studentEmail = req.query.email;
+  console.log("Student Email: ", studentEmail);
+  if (!studentEmail) {
+    return res.status(400).send({ error: "Email is required" });
+  }
+
+  try {
+    // Step 1: Find all booked sessions by the student
+    const bookings = await bookingList
+      .find({ studentEmail })
+      .project({ sessionId: 1 })
+      .toArray();
+
+    console.log("Bookings for student:", bookings);
+
+    // const sessionIds = bookings.map((b) => new ObjectId(b.sessionId));
+    const sessionIds = bookings.map((b) => b.sessionId);
+
+    console.log("Session IDs for student:", sessionIds);
+    // Step 2: Find all materials that match those session IDs
+    const materials = await materialList
+      .find({ sessionId: { $in: sessionIds } })
+      .toArray();
+
+    console.log("Materials for student:", materials);
+
+    res.send(materials);
+  } catch (error) {
+    console.error("Error fetching materials:", error);
+    res.status(500).send({ error: "Failed to fetch materials" });
+  }
+});
+
+// get the study materials
+
+
+// get the checkedBooked
+app.get("/checkedBooked", async (req, res) => {
+  const { sessionId, email } = req.query;
+  console.log("Session ID: ", sessionId, "Student Email: ", email);
+
+  try {
+    const booking = await bookingList.findOne({
+      sessionId: sessionId,
+      studentEmail: email,
+    });
+
+    console.log("Booking found: ", booking);
+    res.send(!!booking); // Return true if booking exists, false otherwise
+  } catch (error) {
+    console.error("Error checking booking:", error);
+    res.status(500).send({ error: "Failed to check booking" });
+  }
+});
+// get the checkedBooked
+/ PAYMENT ROUTES
+// ─────────────────────────────────────────────────────────────────────────────
+
+// POST /savePayment  – store a completed payment record with 80/20 revenue split
+app.post("/savePayment", async (req, res) => {
+  try {
+    const {
+      studentName,
+      studentEmail,
+      tutorName,
+      tutorEmail,
+      sessionId,
+      sessionTitle,
+      totalAmount,
+      transactionId,
+      paymentMethod,
+      paymentStatus,
+    } = req.body;
+
+    // Prevent duplicate payment records for the same transaction
+    const existing = await paymentList.findOne({ transactionId });
+    if (existing) {
+      return res.status(409).send({ error: "Payment already recorded" });
+    }
+
+ const amount = parseFloat(totalAmount) || 0;
+    // Revenue split – calculated strictly on the backend
+    const adminShare = parseFloat((amount * 0.20).toFixed(2));
+    const tutorShare = parseFloat((amount * 0.80).toFixed(2));
+
+    const paymentRecord = {
+      studentName,
+      studentEmail,
+      tutorName,
+      tutorEmail,
+      sessionId,
+      sessionTitle,
+      totalAmount: amount,
+      adminShare,
+      tutorShare,
+      transactionId,
+      paymentMethod: paymentMethod || "card",
+      paymentStatus: paymentStatus || "succeeded",
+      paidAt: new Date(),
+    };
+
+    const result = await paymentList.insertOne(paymentRecord);
+    res.send(result);
+  } catch (err) {
+    console.error("Error saving payment:", err);
+    res.status(500).send({ error: "Failed to save payment" });
+  }
+});
+// POST /savePayment
+
+// GET /adminStats  – aggregated financial overview for admin
+app.get("/adminStats", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    const totalEnrollments = await paymentList.countDocuments({});
+
+    const totalsAgg = await paymentList
+      .aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$totalAmount" },
+            totalAdminEarnings: { $sum: "$adminShare" },
+            totalTutorPayouts: { $sum: "$tutorShare" },
+          },
+        },
+      ])
+      .toArray();
+
+    const totals = totalsAgg[0] || {
+      totalRevenue: 0,
+      totalAdminEarnings: 0,
+      totalTutorPayouts: 0,
+    };
+
+
+    // Monthly revenue breakdown
+    const monthlyAgg = await paymentList
+      .aggregate([
+        {
+          $group: {
+            _id: {
+              year: { $year: "$paidAt" },
+              month: { $month: "$paidAt" },
+            },
+            revenue: { $sum: "$totalAmount" },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+      ])
+      .toArray();
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyRevenue = monthlyAgg.map((m) => ({
+      month: `${monthNames[m._id.month - 1]} ${m._id.year}`,
+      revenue: m.revenue,
+      enrollments: m.count,
+    }));
+
+    res.send({
+      totalEnrollments,
+      totalRevenue: parseFloat(totals.totalRevenue.toFixed(2)),
+      totalAdminEarnings: parseFloat(totals.totalAdminEarnings.toFixed(2)),
+      totalTutorPayouts: parseFloat(totals.totalTutorPayouts.toFixed(2)),
+      monthlyRevenue,
+    });
+  } catch (err) {
+    console.error("Error fetching admin stats:", err);
+    res.status(500).send({ error: "Failed to fetch admin stats" });
+  }
+});
+
+// GET /adminStats
+
+// GET /adminPayments  – paginated + filterable payment history for admin
+app.get("/adminPayments", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const filter = {};
+    if (req.query.tutorEmail) filter.tutorEmail = req.query.tutorEmail;
+    if (req.query.sessionId) filter.sessionId = req.query.sessionId;
+    if (req.query.status) filter.paymentStatus = req.query.status;
+    if (req.query.from || req.query.to) {
+      filter.paidAt = {};
+      if (req.query.from) filter.paidAt.$gte = new Date(req.query.from);
+      if (req.query.to) {
+        const toDate = new Date(req.query.to);
+        toDate.setHours(23, 59, 59, 999);
+        filter.paidAt.$lte = toDate;
+      }
+    }
+
+    const total = await paymentList.countDocuments(filter);
+    const payments = await paymentList
+      .find(filter)
+      .sort({ paidAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    res.send({ payments, total });
+  } catch (err) {
+    console.error("Error fetching admin payments:", err);
+    res.status(500).send({ error: "Failed to fetch admin payments" });
+  }
+});
+
+
+// GET /adminPayments
+
+// GET /tutorStats  – earnings summary for the requesting tutor
+app.get("/tutorStats", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    // Use the verified JWT email for security
+    const tutorEmail = req.user.email;
+
+    // Total individual payment records (= total enrollments by this tutor's sessions)
+    const totalEnrollments = await paymentList.countDocuments({ tutorEmail });
+
+    // Distinct unique students who enrolled
+    const distinctStudents = await paymentList.distinct("studentEmail", { tutorEmail });
+    const totalStudents = distinctStudents.length;
+
+    // Distinct sessions sold (unique sessionId values)
+    const sessionIds = await paymentList.distinct("sessionId", { tutorEmail });
+    const totalSessions = sessionIds.length;
+
+    // Financial aggregation
+    const earningsAgg = await paymentList
+      .aggregate([
+        { $match: { tutorEmail } },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$totalAmount" },
+            totalEarnings: { $sum: "$tutorShare" },
+          },
+        },
+      ])
+      .toArray();
+
+    const earnings = earningsAgg[0] || { totalRevenue: 0, totalEarnings: 0 };
+
+    // Monthly earnings breakdown
+    const monthlyAgg = await paymentList
+      .aggregate([
+        { $match: { tutorEmail } },
+        {
+          $group: {
+            _id: { year: { $year: "$paidAt" }, month: { $month: "$paidAt" } },
+            earnings: { $sum: "$tutorShare" },
+            enrollments: { $sum: 1 },
+          },
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+      ])
+      .toArray();
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyEarnings = monthlyAgg.map((m) => ({
+      month: `${monthNames[m._id.month - 1]} ${m._id.year}`,
+      earnings: parseFloat(m.earnings.toFixed(2)),
+      enrollments: m.enrollments,
+    }));
+
+    res.send({
+      totalStudents,       // unique students
+      totalEnrollments,    // total payment count
+      totalSessions,       // distinct sessions sold
+      totalRevenue: parseFloat(earnings.totalRevenue.toFixed(2)),
+      totalEarnings: parseFloat(earnings.totalEarnings.toFixed(2)),
+      monthlyEarnings,
+    });
+  } catch (err) {
+    console.error("Error fetching tutor stats:", err);
+    res.status(500).send({ error: "Failed to fetch tutor stats" });
+  }
+});
+// GET /tutorStats
+
+
+// GET /tutorPayments  – paginated payment list for the requesting tutor only
+app.get("/tutorPayments", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    // Security: use email from the verified JWT, not a query param the user controls
+    const tutorEmail = req.user.email;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const total = await paymentList.countDocuments({ tutorEmail });
+    const payments = await paymentList
+      .find({ tutorEmail })
+      .sort({ paidAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    res.send({ payments, total });
+  } catch (err) {
+    console.error("Error fetching tutor payments:", err);
+    res.status(500).send({ error: "Failed to fetch tutor payments" });
+  }
+});
+// GET /tutorPayments
+
+// ─────────────────────────────────────────────────────────────────────────────
+async function run() {
+  try {
+    // Connect the client to the server	(optional starting in v4.7)
+    await client.connect();
+    // Send a ping to confirm a successful connection
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
+  } finally {
+    // Ensures that the client will close when you finish/error
+    // await client.close();
+  }
+}
+run().catch(console.dir);
+

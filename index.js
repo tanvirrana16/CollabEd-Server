@@ -890,3 +890,41 @@ app.get("/adminStats", verifyToken, verifyTokenEmail, async (req, res) => {
     res.status(500).send({ error: "Failed to fetch admin stats" });
   }
 });
+
+// GET /adminStats
+
+// GET /adminPayments  – paginated + filterable payment history for admin
+app.get("/adminPayments", verifyToken, verifyTokenEmail, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const filter = {};
+    if (req.query.tutorEmail) filter.tutorEmail = req.query.tutorEmail;
+    if (req.query.sessionId) filter.sessionId = req.query.sessionId;
+    if (req.query.status) filter.paymentStatus = req.query.status;
+    if (req.query.from || req.query.to) {
+      filter.paidAt = {};
+      if (req.query.from) filter.paidAt.$gte = new Date(req.query.from);
+      if (req.query.to) {
+        const toDate = new Date(req.query.to);
+        toDate.setHours(23, 59, 59, 999);
+        filter.paidAt.$lte = toDate;
+      }
+    }
+
+    const total = await paymentList.countDocuments(filter);
+    const payments = await paymentList
+      .find(filter)
+      .sort({ paidAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    res.send({ payments, total });
+  } catch (err) {
+    console.error("Error fetching admin payments:", err);
+    res.status(500).send({ error: "Failed to fetch admin payments" });
+  }
+});
